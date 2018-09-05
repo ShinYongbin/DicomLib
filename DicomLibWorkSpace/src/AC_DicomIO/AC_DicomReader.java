@@ -1,9 +1,11 @@
 package AC_DicomIO;
 
 import java.io.BufferedInputStream;
+import org.apache.log4j.Logger;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+
 
 import javax.swing.JOptionPane;
 
@@ -13,9 +15,11 @@ import javafx.scene.control.Skinnable;
 
 public class AC_DicomReader {
 	
+	static Logger logger = Logger.getLogger(AC_DicomReader.class); 
+	
 	private static final int ID_OFFSET = 128;  //location of "DICM"
 	private static final String DICM = "DICM";
-	private static final int IMPLICIT_VR = 0x2D2D; // '--' 
+	//private static final int IMPLICIT_VR = 0x2D2D; // '--' 
 	//private AC_DicomDictionary..// m_DicomDic =  new AC_DicomDictionary();;
 	
 	private String m_sFilePath = null;
@@ -28,41 +32,34 @@ public class AC_DicomReader {
 	private String m_sTransferSyntaxUID = null;
 	private boolean m_bigEndianTransferSyntax = false;
 	private boolean m_Compressed = false;
+	
+	private static String m_byteSplit = "\\\\"; 
 
 	////// Now property
 	private int m_VR;
 	private int m_nElementLength = 0;
 
 	private int m_TageID;
+	private int m_nLocation = 0;
 	
 	
 
 	
 	public AC_DicomReader() {
 		
-		//m_DicomDic = new AC_DicomDictionary();
+		//
 
 	}
 	
 	public AC_DicomReader(String sFilePath) {
-		//m_DicomDic = new AC_DicomDictionary();
 		
 		readDCMFile(sFilePath);
 		
 	}
 	public AC_DicomReader(File sFilePath) {
-		//m_DicomDic = new AC_DicomDictionary();
-		
-		
+
 		readDCMFile(sFilePath);
 	
-	}
-	
-	public void readDCMFile(String input)
-	{
-		m_sFilePath = input;
-		m_sFile = new File(m_sFilePath);
-		init(m_sFile);
 	}
 	
 	public void readDCMFile(File input)
@@ -73,6 +70,28 @@ public class AC_DicomReader {
 		init(input);
 	}
 	
+	
+	public void readDCMFile(String input)
+	{
+		m_sFilePath = input;
+		m_sFile = new File(m_sFilePath);
+		readDCMFile(m_sFile);
+	}
+	
+	public void close()
+	{		
+	
+		try {
+			m_bisInputStream.close();
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+
 	private void init(File sFilePath)
 	{
 		 FileInputStream fis = null;
@@ -86,37 +105,12 @@ public class AC_DicomReader {
 				m_bisInputStream.mark(400000);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
+				//fis.close();
 				e.printStackTrace(); 
 			}
 	}
 	
-	private void skip(long lskipCount)
-	{
-		while (lskipCount > 0)
-			try {
-				lskipCount -= m_bisInputStream.skip(lskipCount);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	}
-	
-	private void moveHeaderStart() throws IOException
-	{
-		skip(ID_OFFSET);
-		
-		if (!getString(4).equals(DICM)) 
-		{
-			if (m_bisInputStream==null) 
-				m_bisInputStream.close();
-			if (m_bisInputStream!=null)
-			{
-				m_bisInputStream.reset();
-				 m_flagFileEnd = false;
-			}
-		}
-		
-	}
+
 	
 	private boolean checkHeaderStart() throws IOException
 	{
@@ -139,383 +133,157 @@ public class AC_DicomReader {
 			
 		}
 		return true;
-		
-	}
-	
+
+	}	
 	private void checkTSUID() throws IOException
 	{
 
 		m_sTransferSyntaxUID = getString(m_nElementLength);
-		
-////		if (s.indexOf("1.2.4")>-1||s.indexOf("1.2.5")>-1) {
-////		f.close();
-////		String msg = "ImageJ cannot open compressed DICOM images.\n \n";
-////		msg += "Transfer Syntax UID = "+s;
-////		throw new IOException(msg);
-////	}
-		
-		
-		
-	if (m_sTransferSyntaxUID.indexOf("1.2.840.10008.1.2.2")>=0)
-		m_bigEndianTransferSyntax = true;
-	
-	if (m_sTransferSyntaxUID.indexOf("1.2.840.10008.1.2.4")>=0)
-	{
-		m_Compressed = true;
-		JOptionPane.showMessageDialog(null, "Compressed DCM은 아직 지원하지 않습니다.","File Reader Error",JOptionPane.ERROR_MESSAGE);
-	}
-	
-	
-	//if()
-	
 
-	}
-	
-	public String[] getSortvalue() throws IOException
-	{
-		m_bisInputStream.reset();
-		 m_flagFileEnd = false;
-		
-	
-		String sInstanceValue = null;
-		String sSeriesUIDeValue = null;
-		
-		
-		if(!checkHeaderStart())
-			return null;
-		
-	
-		
-		while(sInstanceValue==null || sSeriesUIDeValue==null)
+
+		if (m_sTransferSyntaxUID.indexOf("1.2.840.10008.1.2.2")>=0)
+			m_bigEndianTransferSyntax = true;
+
+		if (m_sTransferSyntaxUID.indexOf("1.2.840.10008.1.2.4")>=0)
 		{
-			int iTmpDicom = getNextTag();
-		
-			
-			if(iTmpDicom==AC_Tag.TransferSyntaxUID)
-			{			
-				checkTSUID();
-			}
-	
-			else if(m_VR==AC_VR.SQ)
-			{
-				
-				readSequnce();
-				//skip(m_nElementLength);
-				/*System.out.println("skip sequenc or Item");
-				System.out.println("Tag ID "+Integer.toHexString(iTmpDicom)
-				+ " VR"+m_VR + " lengt "+m_nElementLength );*/
-			}
-			else {
-				switch (iTmpDicom)
-				{
-				case AC_Tag.InstanceNumber:
-					sInstanceValue = getValue(m_VR);
-					break;
-				case AC_Tag.SeriesInstanceUID:
-					sSeriesUIDeValue = getValue(m_VR);
-					break;
-				case AC_Tag.PixelData:
-					if(sInstanceValue==null)
-						sInstanceValue = "-1";
-					if(sSeriesUIDeValue==null)
-						sInstanceValue = "N/A";
-					break;
-
-
-
-				default:
-					skip(m_nElementLength);
-				/*	System.out.println("skip ");
-					System.out.println("Tag ID "+Integer.toHexString(iTmpDicom)
-					+ " VR"+m_VR + " lengt "+m_nElementLength );*/
-					break;
-				}
-			}
-			
-			
-	
-			/*else if(iTmpDicom==AC_Tag.InstanceNumber)
-			{   
-				sInstanceValue = getValue(m_VR);
-			}
-			else if(iTmpDicom==AC_Tag.SeriesInstanceUID)
-			{   
-				sSeriesUIDeValue = getValue(m_VR);
-			}
-			else
-			{
-				skip(m_nElementLength);
-				System.out.println("skip ");
-				System.out.println("Tag ID "+Integer.toHexString(iTmpDicom)
-				+ " VR"+m_VR + " lengt "+m_nElementLength );
-			//	System.out.println(" value : "+ sValue);*
-
-			}*/
-			//	sValue = getValue(m_VR);	
-		}
-		
-		String[] output = new String[2];
-		
-		System.out.println("seriesUID "+ sSeriesUIDeValue);
-		System.out.println("InstanceNUM "+ sInstanceValue);
-		
-		output[0] = sSeriesUIDeValue;
-		output[1] = sInstanceValue;
-		
-		return output;
-	}
-	
-/*	public byte[] getDicomInfo(AC_DicomInfo info) throws IOException
-	{
-		m_bisInputStream.reset();
-		 m_flagFileEnd = false;
-		
-	
-		byte[] bPixelData = null;
-		
-		boolean decodingTags = true;
-		
-		moveHeaderStart();
-		
-		while(decodingTags)
-		{
-			int iTmpDicom = getNextTag();
-			
-			
-			if(iTmpDicom==AC_Tag.TransferSyntaxUID)
-			{			
-				checkTSUID();
-			}
-	
-			else if(m_VR==AC_VR.SQ)
-			{
-				
-				readSequnce();
-				//skip(m_nElementLength);
-				/*System.out.println("skip sequenc or Item");
-				System.out.println("Tag ID "+Integer.toHexString(iTmpDicom)
-				+ " VR"+m_VR + " lengt "+m_nElementLength );
-			}
-			else 
-			{
-			
-			switch (iTmpDicom)
-			{
-				case AC_Tag.InstanceNumber: case AC_Tag.SeriesInstanceUID: case AC_Tag.WindowCenter: case AC_Tag.WindowWidth: case AC_Tag.Rows: case AC_Tag.Columns:
-				case AC_Tag.BitsAllocated: case AC_Tag.BitsStored: case AC_Tag.RescaleIntercept: case AC_Tag.RescaleSlope: case AC_Tag.StudyInstanceUID: case AC_Tag.StudyTime:
-				case AC_Tag.StudyDate: case AC_Tag.PatientID: case AC_Tag.StudyDescription: case AC_Tag.SeriesDescription: case AC_Tag.Modality:
-				case AC_Tag.SeriesNumber: case AC_Tag.PatientsName :case AC_Tag.PatientsBirthDate :case AC_Tag.PatientsSex :case AC_Tag.InstitutionName :
-				case AC_Tag.StudyID :case AC_Tag.SliceThickness :case AC_Tag.SliceLocation : case AC_Tag.SeriesDate: case AC_Tag.SeriesTime:
-				case AC_Tag.XRayTubeCurrent :case AC_Tag.KVP : case AC_Tag.MagneticFieldStrength: case AC_Tag.RepetitionTime:case AC_Tag.EchoTime:
-				case AC_Tag.PixelRepresentation:case AC_Tag.SamplesperPixel:
-					info.setValue(iTmpDicom, getValue(m_VR));
-				break;
-				case AC_Tag.PixelSpacing:
-					info.setValue(iTmpDicom, getValue(m_VR));
-					break;
-			case AC_Tag.PixelData :
-
-				bPixelData = new byte[m_nElementLength];
-				for(int i=0; i<m_nElementLength;i++)
-				{
-					bPixelData[i] =  (byte) m_bisInputStream.read();
-				}
-				decodingTags =false;
-				break;
-
-
-			default:
-				skip(m_nElementLength);
-				break;
-			}
-			}
-		}
-
-		
-		return bPixelData;
-	}
-	
-	public byte[] getPixel(AC_DicomInfo info) throws IOException
-	{
-		m_bisInputStream.reset();
-		 m_flagFileEnd = false;
-		
-	
-		byte[] bPixelData = null;
-		
-		boolean decodingTags = true;
-		
-		moveHeaderStart();
-		
-		while(decodingTags)
-		{
-			int iTmpDicom = getNextTag();
-			System.out.println(String.format("TAG : %08x , Lengt : %d", iTmpDicom,m_nElementLength));
-
-
-			if(iTmpDicom==AC_Tag.TransferSyntaxUID)
-			{			
-				checkTSUID();
-			}
-
-			else if(m_VR==AC_VR.SQ)
-			{
-				
-				readSequnce();
-				//skip(m_nElementLength);
-				/*System.out.println("skip sequenc or Item");
-				System.out.println("Tag ID "+Integer.toHexString(iTmpDicom)
-				+ " VR"+m_VR + " lengt "+m_nElementLength );
-			}
-			else 
-			{
-
-				switch (iTmpDicom)
-				{
-				case AC_Tag.WindowCenter: case AC_Tag.WindowWidth: case AC_Tag.Rows: case AC_Tag.Columns:
-				case AC_Tag.BitsAllocated: case AC_Tag.BitsStored: case AC_Tag.RescaleIntercept: case AC_Tag.RescaleSlope: 
-				case AC_Tag.PixelRepresentation: 
-				case AC_Tag.SliceThickness:  case AC_Tag.SliceLocation: case AC_Tag.XRayTubeCurrent:
-				case AC_Tag.KVP:  case AC_Tag.MagneticFieldStrength: case AC_Tag.RepetitionTime:
-				case AC_Tag.EchoTime:
-					info.setValue(iTmpDicom, getValue(m_VR));
-					break;
-				case AC_Tag.PixelData :
-
-					bPixelData = new byte[m_nElementLength];
-					for(int i=0; i<m_nElementLength;i++)
-					{
-						bPixelData[i] =  (byte) m_bisInputStream.read();
-					}
-					decodingTags =false;
-
-					break;
-
-
-				default:
-					skip(m_nElementLength);
-					break;
-				}
-			}
-		}
-		
-		//m_bisInputStream.close();
-
-		
-		return bPixelData;
-	}*/
-	
-	public void readSequnce()
-	{
-		boolean inSequnce = true;
-		
-		try {
-			int iTmpDicom = getNextTag();
-			
-			if(m_VR == AC_VR.SQ)
-				readSequnce();
-			
-			if(m_nElementLength == -1)
-			{
-				while(inSequnce)
-				{
-					int iTmpDicom2 = getNextTag();
-					if(iTmpDicom2==AC_Tag.SequenceDelimitationItem)
-						inSequnce = false;
-					else
-						skip(m_nElementLength);
-				}
-					
-			}else
-				
-			{
-				skip(m_nElementLength);
-				System.out.println(String.format("SKIPp = IN SQ = TAG : %08x , Lengt : %d", iTmpDicom,m_nElementLength));
-			}
-			
-			
-			System.out.println(String.format("IN SQ = TAG : %08x , Lengt : %d", iTmpDicom,m_nElementLength));
-			
-			
-			
-			
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			m_Compressed = true;
+			logger.error("Compressed Dicom");
+			JOptionPane.showMessageDialog(null, "Compressed DCM은 아직 지원하지 않습니다.","File Reader Error",JOptionPane.ERROR_MESSAGE);
 		}
 
 	}
 	
-	
-	
-	public void close()
+	public AC_DcmStructure getAttirbutes() throws IOException
 	{
-		/*if(m_DicomDic!=null )
-		{
-			m_DicomDic.clear();
-			m_DicomDic = null;
-		}*/
-	
-		try {
-			m_bisInputStream.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-	
-	public String getTagValue(int inputTag) throws IOException
-	{
+		AC_DcmStructure ouptutAttributes = new AC_DcmStructure();
 		m_bisInputStream.reset();
 		m_flagFileEnd = false;
 
-		String sValue = null;
-		boolean decodingTags = true;
+		checkHeaderStart();
 
-		moveHeaderStart();
-
-		while(decodingTags&&  !m_flagFileEnd)
+		while(!m_flagFileEnd)
 		{
-			int iTmpDicom = getNextTag();
-		
+			int tag = getNextTag();
 			
-			if(iTmpDicom==AC_Tag.TransferSyntaxUID)
+			
+	
+			if(tag==AC_Tag.TransferSyntaxUID)
 			{			
 				checkTSUID();
+				String[] value = {Integer.toString(AC_VR.UI), 
+						m_sTransferSyntaxUID};
+				ouptutAttributes.setAttribute(tag, value);
 			}
-	
-			else if(m_VR==AC_VR.SQ)
+			else if(m_VR==AC_VR.SQ || AC_DicomDictionary.getTagVR(tag) == AC_VR.SQ)
 			{
+			
+				String[] seqncvalue = {Integer.toString(m_VR), Integer.toString(m_nElementLength)};
+				ouptutAttributes.setAttribute(tag, seqncvalue);
+				ouptutAttributes.setSequenceValue(tag, readSequnce(m_nElementLength));
 				
-				readSequnce();
-			}
-			//else if(iTmpDicom==AC_Tag.InstanceNumber)
-			else if(iTmpDicom==inputTag)
-			{   
+			}else if(tag == AC_Tag.PixelData)
+			{
+				ouptutAttributes.setPixelData(getPixelData(m_nElementLength),m_VR);
 				break;
 			}
 			else
 			{
-				skip(m_nElementLength);
+				String[] value = {Integer.toString(m_VR),getValue(m_VR)};
+				ouptutAttributes.setAttribute(tag,value);
+			}
+			
+
+			logger.debug(String.format("TAG : %08x , Lengt : %d", tag,m_nElementLength));
+		}
+		
+		return ouptutAttributes;
+	}
 	
-			//	System.out.println(" value : "+ sValue);*
+	
+	
+
+
+	private AC_DcmStructure readSequnce(int sqenceLenght) throws IOException
+	{
+		AC_DcmStructure outputSequnce = new AC_DcmStructure();
+		
+		
+		if(sqenceLenght==-1)
+		{
+			
+			while(true)
+			{
+				int tag = getNextTag();
+				
+				if(tag == AC_Tag.SequenceDelimitationItem)
+				{
+					break;
+				}
+				else if(m_VR == AC_VR.SQ)
+				{
+					String[] seqncvalue = {Integer.toString(AC_VR.SQ), Integer.toString(m_nElementLength)};
+					outputSequnce.setAttribute(tag, seqncvalue);
+					outputSequnce.setSequenceValue(tag, readSequnce(m_nElementLength));
+				}
+				else
+				{
+					String[] value = {Integer.toString(m_VR),getValue(m_VR)};
+					outputSequnce.setAttribute(tag,value);
+				}
+				
+				logger.debug(String.format("In SQ TYPE : A  TAG : %08x , Lengt : %d", tag,m_nElementLength));
+
+			}
+		}else
+		{
+			int startSQLocatoin = m_nLocation;
+			int SQLenght = m_nElementLength;
+	
+			
+			while(m_nLocation-startSQLocatoin<SQLenght)
+			{
+				int tag = getNextTag();
+				int tmpVR = 0;
+				if(m_VR==AC_VR.Undefined)
+					tmpVR = AC_DicomDictionary.getTagVR(tag);
+				
+
+				if(tag == AC_Tag.Item)
+				{
+					String[] itmeValue = {Integer.toString(AC_VR.Undefined), Integer.toString(m_VR)};
+					outputSequnce.setAttribute(tag,itmeValue);
+				}
+				else if(m_VR == AC_VR.SQ)
+				{
+					String[] seqncvalue = {Integer.toString(AC_VR.SQ), Integer.toString(m_nElementLength)};
+					outputSequnce.setAttribute(tag, seqncvalue);
+					outputSequnce.setSequenceValue(tag, readSequnce(m_nElementLength));
+				}
+				else
+				{
+					String[] value = {Integer.toString(m_VR),getValue(m_VR)};
+					outputSequnce.setAttribute(tag,value);
+				}
+				
+				logger.debug(String.format("In SQ TYPE : B  TAG : %08x , Lengt : %d", tag,m_nElementLength));
 
 			}
 
-			sValue = getValue(m_VR);	
 		}
 		
-		return sValue;
+		return outputSequnce;
 	}
 	
+	
+	
+
+	
+
 	private int getNextTag() throws IOException
 	{
 		int igroupWord = getShort();
 		if (igroupWord==0x0800 && m_bigEndianTransferSyntax) {
-			m_bLittleEndian= false;
-			
+			m_bLittleEndian= false;	
 			igroupWord = 0x0008;
 		}
 		int ielementWord = getShort();
@@ -523,21 +291,8 @@ public class AC_DicomReader {
 		int tag = igroupWord<<16 | ielementWord;
 
 		
-		
 		m_nElementLength = getLength();
-		
-		byte[] ba = new byte[4];
-		ba[0]= (byte)(( m_VR >> 24 ) ); 
-		ba[1]= (byte)(( m_VR >> 16 )); 
-		ba[2]= (byte)(( m_VR >> 8 )); 
-		ba[3]= (byte)( m_VR  );; 
-		System.out.print(String.format("SKIPp = IN SQ = TAG : %08x , Lengt : %d", tag,m_nElementLength));
 
-		System.out.println("  After VR : "+(char)ba[2]+""+(char)ba[3]);
-		
-		
-	
-		
 
 		 m_TageID = tag;
 		
@@ -562,19 +317,17 @@ public class AC_DicomReader {
 		// match the known codes. It is possible that these two
 		// bytes are part of a 32-bit length for an implicit VR.
 		m_VR = (b0<<8) + b1;
-	
-		System.out.println("VR : "+(char)b0+""+(char)b1);
-		System.out.println("VR byte : "+b0+" "+b1);
 		
-		
-		System.out.println("VR2 : "+(char)b2+""+(char)b3);
-		System.out.println("VR2 byte : "+b2+" "+b3);
-	
 		
 		switch (m_VR) {
 		
 		
-			case AC_VR.OB: case  AC_VR.OW: case  AC_VR.SQ: 
+			case  AC_VR.SQ: 
+				
+				return getInt();
+		
+		
+			case AC_VR.OB: case  AC_VR.OW: case AC_VR.OF :
 			case  AC_VR.UN: case  AC_VR.UT:
 					
 			
@@ -583,14 +336,8 @@ public class AC_DicomReader {
 				{
 					return getInt();
 				}
-				// Implicit VR with 32-bit length
-				//m_VR = IMPLICIT_VR;// = IMPLICIT_VR;
-				//System.out.println("IMPLICIT_VR");
 				
-				/*if (m_bLittleEndian)
-					return ((b3<<24) + (b2<<16) + (b1<<8) + b0);
-				else
-					return ((b0<<24) + (b1<<16) + (b2<<8) + b3);	*/	
+				
 			case AC_VR.AE: case AC_VR.AS: case AC_VR.AT: case AC_VR.CS: case AC_VR.DA: case AC_VR.DS: case AC_VR.DT:  case AC_VR.FD:
 			case AC_VR.FL: case AC_VR.IS: case AC_VR.LO: case AC_VR.LT: case AC_VR.PN: case AC_VR.SH: case AC_VR.SL: case AC_VR.SS:
 			case AC_VR.ST: case AC_VR.TM:case AC_VR.UI: case AC_VR.UL: case AC_VR.US: case AC_VR.QQ:
@@ -599,10 +346,11 @@ public class AC_DicomReader {
 					return ((b3<<8) + b2);
 				else
 					return ((b2<<8) + b3);
+
+			
 			default:
 				// Implicit VR with 32-bit length...
-				m_VR = IMPLICIT_VR;
-				System.out.println("IMPLICIT_VR");
+				m_VR = AC_VR.Undefined;
 				if (m_bLittleEndian)
 					return ((b3<<24) + (b2<<16) + (b1<<8) + b0);
 				else
@@ -613,9 +361,9 @@ public class AC_DicomReader {
 	private String getValue(int iVR) throws IOException
 	{
 		if(m_nElementLength==-1 ||m_nElementLength==0)
-			return "-1";
+			return "";
 		
-		if(IMPLICIT_VR==iVR)
+		if(AC_VR.Undefined==iVR)
 		{
 		//	m_DicomDic = new AC_DicomDictionary();
 			
@@ -623,24 +371,31 @@ public class AC_DicomReader {
 		}
 		
 		String sValue ="";
+		int ivm =0;
+		String fullS = "";
+		
+		byte b0 = 0;
+		byte b1 = 0;
+		
 	
 		switch(iVR)
 		{
 		case AC_VR.OB: case AC_VR.UN:
-			int ivm = m_nElementLength/2;
-			String fullS = "";
+			 ivm = m_nElementLength/2;
+			 fullS = "";
 			
-			byte b0 = (byte)getByte();
-			byte b1 = (byte)getByte();
-			fullS += Byte.toString(b0) +"\\\\"+ Byte.toString(b1);
+			b0 = (byte)getByte();
+			b1 = (byte)getByte();
+			fullS = Byte.toString(b0) +m_byteSplit+ Byte.toString(b1);
 			//
 			for(int i=1; i<ivm;i++)	
 			{
 				b0 = (byte)getByte();
 				b1 = (byte)getByte();
-				fullS +="\\\\"+Byte.toString(b0) +"\\\\"+ Byte.toString(b1);
+				fullS +=m_byteSplit+Byte.toString(b0) +m_byteSplit+ Byte.toString(b1);
 			}
 			sValue =fullS;
+			//alue = getString(m_nElementLength);
 			break;
 		case AC_VR.UL:
 			sValue =(Integer.toString(getInt()));
@@ -654,18 +409,19 @@ public class AC_DicomReader {
 			//
 			for(int i=1; i<ivm;i++)	
 			{
-				fullS +="\\\\"+Double.toString(getDouble());
+				fullS +=m_byteSplit+Double.toString(getDouble());
 			}
+			sValue =fullS;
 			break;
 		case AC_VR.FL:
 			
-			if (m_nElementLength==2)
+			if (m_nElementLength==4)
 				sValue = Float.toString(getFloat());
 			else {
 				sValue = "";
-				int n = m_nElementLength/2;
+				int n = m_nElementLength/4;
 				for (int i=0; i<n; i++)
-					sValue += Float.toString(getFloat())+" ";
+					sValue += Float.toString(getFloat())+m_byteSplit;
 			}
 			break;
 			
@@ -680,22 +436,22 @@ public class AC_DicomReader {
 				sValue = "";
 				int n = m_nElementLength/2;
 				for (int i=0; i<n; i++)
-					sValue += Integer.toString(getShort())+" ";
+					sValue += Integer.toString(getShort())+m_byteSplit;
 			}
 			break;
-		case IMPLICIT_VR:
+		case AC_VR.Undefined:
 			 ivm = m_nElementLength/2;
 			 fullS = "";
 			
 			 b0 = (byte)getByte();
 			 b1 = (byte)getByte();
-			fullS += Byte.toString(b0) +"\\\\"+ Byte.toString(b1);
+			fullS = Byte.toString(b0) +m_byteSplit+ Byte.toString(b1);
 			//
 			for(int i=1; i<ivm;i++)	
 			{
 				b0 = (byte)getByte();
 				b1 = (byte)getByte();
-				fullS += "\\\\"+ Byte.toString(b0) +"\\\\"+ Byte.toString(b1);
+				fullS += m_byteSplit+ Byte.toString(b0) +m_byteSplit+ Byte.toString(b1);
 			}
 			sValue =fullS;
 			break;
@@ -716,11 +472,37 @@ public class AC_DicomReader {
 		sValue = sValue.trim();
 		
 		if(sValue.equals(""))
-			sValue = "-1";
+			sValue = "";
 
 		return sValue;
 	}
 	
+	
+	private void skip(long lskipCount)
+	{
+		m_nLocation += lskipCount;
+		
+		while (lskipCount > 0)
+			try {
+				lskipCount -= m_bisInputStream.skip(lskipCount);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
+	
+	private byte[] getPixelData(int length) throws IOException
+	{
+		
+		byte[] arrPixelData = new byte[m_nElementLength];
+		
+		for(int i=0; i<m_nElementLength;i++)
+		{
+			arrPixelData[i] =  (byte) m_bisInputStream.read();
+		}
+		
+		return arrPixelData;
+	}
 	
 	
 	
@@ -732,7 +514,7 @@ public class AC_DicomReader {
 			buf[i] = (byte)getByte();
 		}
 		
-		//location += length;
+		m_nLocation += length;
 		
 		String tmp = new String(buf);
 		String newTmp = tmp.replaceAll("(^\\p{Z}+|\\p{Z}+$)", "");
@@ -747,7 +529,7 @@ public class AC_DicomReader {
 			//throw new IOException("unexpected EOF");
 		
 		}
-	//	++location;
+		++m_nLocation;
 		return b;
 	}
 

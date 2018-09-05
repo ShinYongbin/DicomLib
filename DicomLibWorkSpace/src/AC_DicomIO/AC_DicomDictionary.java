@@ -11,8 +11,12 @@ public  class AC_DicomDictionary {
 	private static final String VERSION = "1.0.1";
 	public String getVersion() {return VERSION;};
 	
+	
+
+	
 	public static List<Integer> m_TagID = new ArrayList<>();
 	public static List<Integer> m_TagVR = new ArrayList<>();
+	
 	public static final String GroupLength ="0000";
 	private static boolean m_flagSetup = false;
 	
