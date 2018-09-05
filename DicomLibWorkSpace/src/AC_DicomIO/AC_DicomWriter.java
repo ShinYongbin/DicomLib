@@ -168,7 +168,7 @@ public class AC_DicomWriter {
 		{
 			int tmpTag = linkitr.next();
 			
-			/*if(tmpTag!=0x00090010)
+			/*if(tmpTag!=0x00101002)
 				continue;*/
 			
 			
@@ -337,7 +337,7 @@ public class AC_DicomWriter {
 			
 			tmp  = Integer.parseInt(inString[1]);
 			abValue = getInt2Bytes(tmp);
-			return ByteBuffer.allocate(12).put(abTag).put(abValue).array();	
+			return ByteBuffer.allocate(12).put(abTag).put(abVR).put(abValue).array();	
 
 
 
