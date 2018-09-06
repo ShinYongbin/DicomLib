@@ -81,24 +81,13 @@ public class AC_DicomWriter {
 			wirteDCMI(m_buffOutStream);
 			byte[] attribute = cnvDcmStruc2Bytearr(inDCMStuc);
 			
+		
 			
 			
-			
-			for(byte tmp : attribute)
-			{
-				System.out.format("%02X ", tmp);//("%x ", b);
-			}
-			
-			
-			
-			m_buffOutStream.write(attribute);
-			
+			m_buffOutStream.write(attribute);			
 			m_buffOutStream.write(getBytesPixelData(inDCMStuc));
 			m_buffOutStream.flush();
-			
-			
-			
-			
+
 			
 			
 		} catch (FileNotFoundException e) {
@@ -114,18 +103,15 @@ public class AC_DicomWriter {
 
 	
 	}
-	private void wirteDCMI(BufferedOutputStream m_buffOutStream2) throws IOException {
+	private void wirteDCMI(BufferedOutputStream inBufOutStream) throws IOException {
 		// TODO Auto-generated method stub
-		for(int i=0; i<128;i++)
-			m_buffOutStream2.write((byte)0x00);
+		for(int i=0; i<AC_DCMStandard.DCMI_LEN; i++)
+			inBufOutStream.write((byte)0x00);
 		//44 49 43 4D
-		m_buffOutStream2.write(0x44);
-		m_buffOutStream2.write(0x49);
-		m_buffOutStream2.write(0x43);
-		m_buffOutStream2.write(0x4D);
-		
-		
-		
+		inBufOutStream.write(0x44);
+		inBufOutStream.write(0x49);
+		inBufOutStream.write(0x43);
+		inBufOutStream.write(0x4D);
 		
 	}
 
@@ -147,9 +133,10 @@ public class AC_DicomWriter {
 			return ByteBuffer.allocate(margeLength).put(abTag).put(abLenght).put(abPixel).array();
 		}
 		
-		
 		return ByteBuffer.allocate(margeLength).put(abTag).put(abVR).put(abLenght).put(abPixel).array();
 	}
+	
+	
 	
 	private byte[] cnvDcmStruc2Bytearr(AC_DcmStructure inDCMStuc)
 	{
@@ -160,76 +147,29 @@ public class AC_DicomWriter {
 		= inDCMStuc.getSequence();
 		
 		Set<Integer> keyset = attirbutes.keySet();
-		Iterator<Integer> linkitr = keyset.iterator();
+		Iterator<Integer> tagItr = keyset.iterator();
 		
 		LinkedList<byte[]> dcmByteList = new LinkedList<>();
 		
-		while(linkitr.hasNext())
+		while(tagItr.hasNext())
 		{
-			int tmpTag = linkitr.next();
-			
-			/*if(tmpTag!=0x00101002)
-				continue;*/
-			
-			
+			int tmpTag = tagItr.next();
 			
 			String[] tmp  = attirbutes.get(tmpTag);
-			
 			byte[] tmparrByte = getByteValue(tmpTag, tmp);
 			
 
-			logger.debug(String.format("TAG : %08x , vr : %s, value : %s", tmpTag,
-					Integer.parseInt(tmp[0]), tmp[1]   ));
+			logger.debug(String.format("TAG : %08x , vr : %s, value : %s", tmpTag,Integer.parseInt(tmp[0]), tmp[1]   ));
+
 			
-		
+			
 			if(seqenceMap.get(tmpTag)==null)
 			{
 				dcmByteList.add(tmparrByte);
 			}else
 			{
 				AC_DcmStructure tmpSequnce = seqenceMap.get(tmpTag);
-				
-				
-				
-				if(tmp[1].equals("-1") )
-				{
-					byte[] tmpSQbyte = null;
-					if(Integer.parseInt(tmp[0])==AC_VR.Undefined)
-						tmpSQbyte = AC_DCMStandard.BYTES_SQ_STANDARD_TWOITEM.clone();
-					else
-						tmpSQbyte = AC_DCMStandard.BYTES_SQ_STANDARD_THREEITEM.clone();
-					byte[] tmpSQTagbyte = getIntTag2Btyes(tmpTag);
-					
-					
-					for(int idx = 0 ; idx< tmpSQTagbyte.length;idx++)
-						tmpSQbyte[idx] = tmpSQTagbyte[idx];
-					
-					dcmByteList.add(tmpSQbyte);	
-					
-					for(byte tmp2222 : tmpSQbyte)
-					{
-						//System.out.print(idx++);;//("%x ", b);
-						System.out.format("%02X ", tmp2222);//("%x ", b);
-						System.out.println("add!!");
-					}
-						
-					
-					
-				}else
-				{
-					dcmByteList.add(tmparrByte);
-				}
-				
-				byte[] btmpSequnce = cnvDcmStruc2Bytearr( tmpSequnce);
-				dcmByteList.add(btmpSequnce);
-				
-
-				if(tmp[1].equals("-1") )
-				{
-					dcmByteList.add(AC_DCMStandard.BYTES_SQ_DElIMITATION);
-				}
-				
-				
+				dcmByteList.add(getSQBytes(tmpTag, tmp, tmpSequnce));
 			}
 				
 		}
@@ -246,19 +186,56 @@ public class AC_DicomWriter {
 				e.printStackTrace();
 			}
 		}
-		
-		
-		
-		//for()
-		
-		
-		
 		return outputStream.toByteArray();
-		
 	}
 	
-	
-	
+	private byte[] getSQBytes(int inTag, String[] inValue,AC_DcmStructure inSQStruc)
+	{
+		//byte[] abTag =  getIntTag2Btyes(inTag);
+		int iVR  = Integer.parseInt(inValue[0]);
+		String sValue  = inValue[1];
+		int SQType = 0;
+		
+		
+		byte[] abTag =  getIntTag2Btyes(inTag);
+		byte[] abVR  = new byte[2];
+		ByteBuffer.wrap(abVR).putShort((short)iVR);
+		//ByteBuffer.wrap(abVR).putShort((short)iVR);
+		byte[] abValue = null; 
+
+		
+		
+		byte[] tmpSQbyte = new byte[0];
+		byte[] tmpSQDelimi = new byte[0];
+		if(sValue.equals("-1"))
+		{
+			if(iVR==AC_VR.SQ)
+			{
+				tmpSQbyte = AC_DCMStandard.BYTES_SQ_STANDARD_THREEITEM.clone();
+			}
+			else if(iVR==AC_VR.Undefined)
+			{
+				tmpSQbyte = AC_DCMStandard.BYTES_SQ_STANDARD_TWOITEM.clone();
+			}
+			for(int idx = 0 ; idx< abTag.length;idx++)
+				tmpSQbyte[idx] = abTag[idx];
+			tmpSQDelimi =  AC_DCMStandard.BYTES_SQ_DElIMITATION;	
+		}else
+		{
+			abVR = paddingZero(abVR, 4);
+			if(sValue.equals("-1") )
+				sValue = "0";
+			 if(iVR==AC_VR.Undefined)
+				abVR = new byte[0];
+			abValue = getInt2Bytes(Integer.parseInt(sValue));
+			tmpSQbyte =  ByteBuffer.allocate(abTag.length+abVR.length+abValue.length).put(abTag).put(abVR).put(abValue).array();	
+		}
+		
+		byte[] bTmpSequnce = cnvDcmStruc2Bytearr(inSQStruc);
+
+		return ByteBuffer.allocate(tmpSQbyte.length+bTmpSequnce.length+tmpSQDelimi.length).
+				put(tmpSQbyte).put(bTmpSequnce).put(tmpSQDelimi).array();
+	}
 	
 	
 	private byte[] getByteValue(int inTag, String[] inString)
@@ -271,33 +248,26 @@ public class AC_DicomWriter {
 		byte[] abVR  = new byte[2];
 		ByteBuffer.wrap(abVR).putShort((short)inVR);
 	
-		byte[] abValue = null; 
+		byte[] abValue = new byte[0]; 
 		byte[] abLenght = {0x00, 0x00};
 	
 		
 		int tmp = 0;
-		
 		
 		if( AC_VR.Undefined==inVR)
 		{ 
 			flagUnDefVR = true;
 			inVR = AC_DicomDictionary.getTagVR(inTag);
 		}
-		
-		
-		
-		
 
 		if(inTag== AC_Tag.Item)
 		{
 			if(inString[1].equals(""))
 			{
-
 				if(m_flagLittle)
 					return AC_DCMStandard.BYTES_ITEM_STANDARD_TWOITEM_LITTLE;
 				else
 					return AC_DCMStandard.BYTES_ITEM_STANDARD_TWOITEM_BIG;
-
 			}else
 			{
 				tmp  = Integer.parseInt(inString[1]);
@@ -325,19 +295,7 @@ public class AC_DicomWriter {
 
 		switch(inVR) 
 		{
-		case  AC_VR.SQ: 
-			
-			
-			abVR = paddingZero(abVR, 4);
-			if(inString[1].equals("") )
-			{
-				abValue = new byte[0];
-				break;
-			}
-			
-			tmp  = Integer.parseInt(inString[1]);
-			abValue = getInt2Bytes(tmp);
-			return ByteBuffer.allocate(12).put(abTag).put(abVR).put(abValue).array();	
+		
 
 
 
@@ -430,15 +388,15 @@ public class AC_DicomWriter {
 		}
 		if(flagUnDefVR)
 		{
-			abVR = new  byte[0];
+			 abVR = new  byte[0];
 			 abLenght  = paddingZero(abLenght, 4);
 		}
 		
 		
 		
 		byte[] concatBytes = null;
-		if(abValue!=null)
-		{
+	
+	
 			if(abVR.length == 4|| flagUnDefVR)
 			{
 				abLenght = getInt2Bytes(abValue.length);
@@ -448,14 +406,7 @@ public class AC_DicomWriter {
 
 			int margeLength = abTag.length+abVR.length+abValue.length+abLenght.length;
 			concatBytes =  ByteBuffer.allocate(margeLength).put(abTag).put(abVR).put(abLenght).put(abValue).array();
-		}else
-		{
-			
-			int margeLength = abTag.length+abVR.length+abLenght.length;
-			concatBytes =  ByteBuffer.allocate(margeLength).put(abTag).put(abVR).put(abLenght).array();
-		}
-		
-		
+	
 			
 		
 

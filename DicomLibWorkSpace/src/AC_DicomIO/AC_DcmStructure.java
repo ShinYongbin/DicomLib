@@ -74,9 +74,6 @@ public class AC_DcmStructure {
 	{
 		return m_pixelData;
 	}
-	
-	
-	
 
 	public void setAttribute(int tag,String[] input)
 	{
@@ -117,11 +114,6 @@ public class AC_DcmStructure {
 		}
 	}
 	
-	private byte[] cnvString2Byte(String input)
-	{
-
-		return null;
-	}
 	private boolean isSequnce(int inTag)
 	{
 		if(m_SequenceMap.get(inTag) !=null)
@@ -141,7 +133,7 @@ public class AC_DcmStructure {
 			
 			String[] tmp  = m_attirbutes.get(tmpTag);
 
-			System.out.println(String.format(input + "TAG : %08x  VR : %s Value : %s", tmpTag,AC_VR.getVRName(Integer.parseInt(tmp[0])),tmp[1]));
+			logger.debug(String.format(input + "TAG : %08x  VR : %s Value : %s", tmpTag,AC_VR.getVRName(Integer.parseInt(tmp[0])),tmp[1]));
 			
 		
 			if(this.isSequnce(tmpTag))
@@ -153,7 +145,115 @@ public class AC_DcmStructure {
 		}
 
 	}
+	public void Alnaysis(int type)
+	{
+		
+		Set<Integer> keyset = m_attirbutes.keySet();
+		Iterator<Integer> tagItr = keyset.iterator();
+		
+		
+		LinkedHashMap<Integer, String[]> tmpAttri
+		= new LinkedHashMap<Integer, String[]>() ;
+
+		while(tagItr.hasNext())
+		{
+			int tmpTag = tagItr.next();
+			String[] tmpVRnValue  = m_attirbutes.get(tmpTag);
+			int iVR = AC_DicomDictionary.getTagVR(tmpTag);
+			String sValue = tmpVRnValue[1];
+
+
+			String[] tmpInput = {Integer.toString(iVR), sValue };
+			tmpAttri.put(tmpTag, tmpInput);
+			
+			if(m_SequenceMap.get(tmpTag)!=null)
+				m_SequenceMap.get(tmpTag).Alnaysis(1);
+				
+
+		}
+		m_attirbutes.clear();
+		m_attirbutes.putAll(tmpAttri); 
+		
+
+				
+		
+	}
+	
 
 	
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

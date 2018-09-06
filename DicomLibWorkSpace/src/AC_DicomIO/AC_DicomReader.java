@@ -250,7 +250,7 @@ public class AC_DicomReader {
 
 				if(tag == AC_Tag.Item)
 				{
-					String[] itmeValue = {Integer.toString(AC_VR.Undefined), Integer.toString(m_VR)};
+					String[] itmeValue = {Integer.toString(AC_VR.Undefined), Integer.toString(m_nElementLength)};
 					outputSequnce.setAttribute(tag,itmeValue);
 				}
 				else if(m_VR == AC_VR.SQ)

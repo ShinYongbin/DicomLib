@@ -25,128 +25,6 @@ public class test {
 	static Logger logger = Logger.getLogger(test.class);
 	static boolean m_FlagLittle = true;
 	
-	public static byte[] getByteValue(int inTag, String[] inString)
-	{
-		int inVR = Integer.parseInt(inString[0]);
-		
-		byte[] abTag =  getIntTag2Btyes(inTag);
-		
-		byte[] abVR  = new byte[2];
-		ByteBuffer.wrap(abVR).putShort((short)inVR);
-	
-		byte[] abValue =  getDouble2Btyes(Double.parseDouble(inString[1]));//getString2Bytes(inString[1]);
-		byte[] abLenght = null;
-		
-		if(abValue.length>=0xFFFF)
-		{
-			 abLenght = getInt2Bytes(abValue.length);
-			 abVR = getShort2Bytes(inVR);
-		}else
-			 abLenght = getShort2Bytes(abValue.length);
-			
-		int margeLength = abTag.length+abVR.length+abValue.length+abLenght.length;
-		byte[] concatBytes =  ByteBuffer.allocate(margeLength).put(abTag).put(abVR).put(abLenght).put(abValue).array();
-		
-		return concatBytes;
-		
-	}
-	
-	public static byte[] arrayReviers(byte[] inBytes)
-	{
-		byte[] outBytes = new byte[inBytes.length];
-		for(int i=0; i< inBytes.length;i++)
-			outBytes[i] = inBytes[inBytes.length-1-i];
-		return outBytes;
-	}
-	
-	public static byte[] getIntTag2Btyes(int inInput)
-	{    
-		byte[] outBytes = new byte[4];
-		ByteBuffer.wrap(outBytes).putInt(inInput);
-		
-		if(m_FlagLittle)
-		{
-			outBytes = arrayReviers(outBytes);
-			return new byte[] {outBytes[2], outBytes[3], outBytes[0], outBytes[1]};
-		}else	
-			return outBytes;
-		
-	}
-	
-	public static byte[] getDouble2Btyes(double inInput)
-	{    
-		byte[] outBytes = new byte[8];
-		ByteBuffer.wrap(outBytes).putDouble(inInput);
-		
-		if(m_FlagLittle)
-		{
-			return arrayReviers(outBytes);
-		}else	
-			return outBytes;
-		
-	}
-	
-	public static byte[] getFloat2Btyes(float inInput)
-	{    
-		byte[] outBytes = new byte[8];
-		ByteBuffer.wrap(outBytes).putFloat(inInput);
-		
-		if(m_FlagLittle)
-		{
-			return arrayReviers(outBytes);
-		}else	
-			return outBytes;
-		
-	}
-	
-	
-	
-	public static byte[] getInt2Bytes(int inInput)
-	{
-		byte[] outBytes = new byte[4];
-		ByteBuffer.wrap(outBytes).putInt(inInput);
-		
-		if(m_FlagLittle)
-		{
-			return arrayReviers(outBytes);
-		}else	
-			return outBytes;
-	}
-	
-	
-	public static byte[] getShort2Bytes(int inInput)
-	{
-		byte[] outBytes = new byte[2];
-		ByteBuffer.wrap(outBytes).putShort((short)inInput);
-		
-		if(m_FlagLittle)
-		{
-			return arrayReviers(outBytes);
-		}else	
-			return outBytes;
-	}
-	
-	public static byte[] getString2Bytes(String inString)
-	{
-		byte[] outBytes = inString.getBytes();
-		if(outBytes.length%2!=0)
-			outBytes = paddingZero(outBytes,outBytes.length+1);
-		return outBytes;
-	}
-	
-	private static byte[] paddingZero( byte[] inBytes, int inSize)
-	{
-		byte[] tmp = new byte[inSize];
-		for(int i=0; i<inBytes.length;i++)
-			tmp[i] = inBytes[i];
-		for(int i=inBytes.length; i<inSize;i++)
-			tmp[i] = 0x00;
-
-		return tmp.clone();
-	}
-	
-	
-
 	public static void main(String[] args) {
 	//	for(String tmp : args)
 		/*{
@@ -187,7 +65,7 @@ public class test {
 		// TODO Auto-generated method stub
 			AC_DicomReader testR = new AC_DicomReader();
 		//AC_DicomDictionary.setupList();
-		testR.readDCMFile("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\CT_Base.dcm");
+		testR.readDCMFile("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\00000497");
 		AC_DcmStructure ss = null;
 		try {
 			ss = testR.getAttirbutes();
@@ -196,11 +74,13 @@ public class test {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		ss.Alnaysis(1);
 		ss.printInfo("");
 		
 		
 		
-		AC_DicomWriter testW = new AC_DicomWriter(new File("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\CT_Base.txt"));
+		AC_DicomWriter testW = new AC_DicomWriter(new File("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\00000497.txt"));
+	
 		testW.writeDCMFile(ss);
 		
 	
