@@ -159,8 +159,15 @@ public class AC_DcmStructure {
 		{
 			int tmpTag = tagItr.next();
 			String[] tmpVRnValue  = m_attirbutes.get(tmpTag);
-			int iVR = AC_DicomDictionary.getTagVR(tmpTag);
+			String sVR = tmpVRnValue[0];
 			String sValue = tmpVRnValue[1];
+			int iVR = Integer.parseInt(sVR);
+			if(Integer.parseInt(sVR)==AC_VR.Undefined)
+			{
+				iVR = AC_DicomDictionary.getTagVR(tmpTag);
+			}
+		
+		
 
 
 			String[] tmpInput = {Integer.toString(iVR), sValue };

@@ -153,14 +153,25 @@ public class AC_DicomWriter {
 		
 		while(tagItr.hasNext())
 		{
+	
+
+			
 			int tmpTag = tagItr.next();
 			
+			
+			//if(tmpTag!=0x00090010)
+			//	continue;
+			
 			String[] tmp  = attirbutes.get(tmpTag);
+
+			logger.debug(String.format("TAG : %08x , vr : %s, value : %s", tmpTag,tmp[0], tmp[1]   ));
+			
+			
 			byte[] tmparrByte = getByteValue(tmpTag, tmp);
 			
 
-			logger.debug(String.format("TAG : %08x , vr : %s, value : %s", tmpTag,Integer.parseInt(tmp[0]), tmp[1]   ));
-
+			
+		
 			
 			
 			if(seqenceMap.get(tmpTag)==null)

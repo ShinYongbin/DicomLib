@@ -165,6 +165,11 @@ public class AC_DicomReader {
 		{
 			int tag = getNextTag();
 			
+			//if(tag!=0x00090010)
+		//	{ skip(m_nElementLength);
+				//continue;
+			//}
+			
 			
 	
 			if(tag==AC_Tag.TransferSyntaxUID)

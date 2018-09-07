@@ -65,7 +65,7 @@ public class test {
 		// TODO Auto-generated method stub
 			AC_DicomReader testR = new AC_DicomReader();
 		//AC_DicomDictionary.setupList();
-		testR.readDCMFile("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\00000497");
+		testR.readDCMFile("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\sqenceTypeB.dcm");
 		AC_DcmStructure ss = null;
 		try {
 			ss = testR.getAttirbutes();
@@ -79,7 +79,7 @@ public class test {
 		
 		
 		
-		AC_DicomWriter testW = new AC_DicomWriter(new File("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\00000497.txt"));
+		AC_DicomWriter testW = new AC_DicomWriter(new File("D:\\98_data\\03_AiCRO_Dev\\DiocomLib\\sqenceTypeB.txt"));
 	
 		testW.writeDCMFile(ss);
 		
